@@ -1,3 +1,7 @@
+"""A controller state machine, implemented using the standard OOP state pattern,
+that is to be used inside an `asyncio` coroutine or task.
+"""
+
 # Core dependencies
 # The `__future__` import must be listed first. Otherwise, a `SyntaxError` is emitted.
 from __future__ import annotations
@@ -6,18 +10,23 @@ import asyncio
 from enum import Enum, auto, verify, UNIQUE
 from typing import override
 
-# Package dependencies
-from PySide6.QtCore import Signal
-
 # Project dependencies
+from prototype.async_inbox import AsyncInbox
 from prototype.camera_client import CameraClient
 from prototype.signals import Signals
 
 
 class AsyncController:
+    """A class implementing a controller intended to run as a concurrent task in
+    an `asyncio` event loop. The controller implements a state machine via the standard
+    OOP state pattern. The methods are intended to be called via a message passing
+    mechanism using an `AsyncInbox`, which is why the static method `send_controller_message`
+    is provided.
+    """
+
     def __init__(self, initial_state: IState, signals: Signals) -> None:
-        """Initialize the controller to the given initial state and call the `
-        on_entry` method for the state.
+        """Construct the initial instance variables but do not call any coroutines.
+        For that, see the `initialize` method.
         """
         self.__state = initial_state
         self.__signals = signals
@@ -29,6 +38,9 @@ class AsyncController:
         self.__state.camera_client = self.__camera_client
 
     async def initialize(self) -> None:
+        """Initialize the controller to the initial state and call the `on_entry`
+        method for the state.
+        """
         await self.__camera_client.initialize()
         await self.__state.on_entry()
 
@@ -51,8 +63,8 @@ class AsyncController:
         return self.__state
 
     @staticmethod
-    async def send_controller_message(inbox: asyncio.Queue, message: ControllerMessage):
-        inbox.put_nowait(message)
+    async def send_controller_message(inbox: AsyncInbox[ControllerMessage], message: ControllerMessage):
+        inbox.send(message)
 
     # Messages that the controller can be "sent" by calling methods on it.
     # The messages are then deferred down to the specific state that the
@@ -228,12 +240,12 @@ class ControllerMessage(Enum):
     GET_EXPOSING_TIME = auto()
 
 
-async def read_inbox(inbox: asyncio.Queue, controller: AsyncController):
+async def read_inbox(inbox: AsyncInbox[ControllerMessage], controller: AsyncController):
     """Read the inbox, by blocking until a message arrives, and then delegate the message
-    to an `AyncController` method.
+    to an `AsyncController` method.
     """
     while True:
-        message = await inbox.get()
+        message = await inbox.read()
         match message:
             case ControllerMessage.START_CAMERA_EXPOSURE:
                 await controller.start_camera_exposure()
@@ -248,16 +260,16 @@ async def read_inbox(inbox: asyncio.Queue, controller: AsyncController):
                 await controller.get_exposing_time()
 
 
-async def periodically_get_status(inbox: asyncio.Queue):
+async def periodically_get_status(inbox: AsyncInbox[ControllerMessage]):
     """A task that periodically, at 10Hz, sends a message to the controller to get various
     statuses from the underlying tasks.
     """
     while True:
-        await inbox.put(ControllerMessage.GET_EXPOSING_TIME)
+        inbox.send(ControllerMessage.GET_EXPOSING_TIME)
         await asyncio.sleep(0.1)
 
 
-async def async_controller_main(inbox: asyncio.Queue, signals: Signals):
+async def async_controller_main(inbox: AsyncInbox[ControllerMessage], signals: Signals):
     """This is the main `asyncio` coroutine that launches concurrent tasks, running the
     `AsyncController` state machine that centrally manages the various tasks.
     """

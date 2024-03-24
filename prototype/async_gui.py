@@ -1,5 +1,6 @@
-"""Implements a simple control panel for a CyberPower PDU. See the README.md for a diagram of
-the state machine that is implemented here using Qt's State Machine framework.
+"""Implements a PySide6 GUI application that contains a state machine and
+talks to a core `asyncio` state machine, which the GUI application sends messages
+to and responds to state transitions
 """
 
 # Core dependencies
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
 
 # Project dependencies
 from prototype.async_controller import AsyncController, ControllerMessage, async_controller_main
+from prototype.async_inbox import AsyncInbox
 from prototype.led_indicator import LedIndicator
 from prototype.signals import Signals
 
@@ -40,9 +42,9 @@ class MainWindow(QWidget):
 
         # The the `asyncio` queue and event loop are created here, in the GUI thread (main thread),
         # but they will be passed into a new thread that will actually run the event loop.
-        # Under no circumstances should the `asyncio.Queue` be used outside of that event loop. It
+        # Under no circumstances should the `AsyncInbox` be used outside of that event loop. It
         # is only okay to construct it outside of the event loop.
-        self._asyncio_queue: asyncio.Queue = asyncio.Queue()
+        self._async_inbox: AsyncInbox[ControllerMessage] = AsyncInbox[ControllerMessage]()
         self._asyncio_event_loop = asyncio.new_event_loop()
 
         # Create the state machine and the various states
@@ -177,12 +179,12 @@ class MainWindow(QWidget):
         self.show()
 
     def send_controller_message(self, message: ControllerMessage) -> None:
-        """Send the `asyncio` event loop's `asyncio.Queue` a message by using the coroutine
+        """Send the `asyncio` event loop's `AsyncInbox` a message by using the coroutine
         `send_controller_message` and sending it to run on the `asyncio` event loop, putting
-        the message on the `asyncio.Queue`.
+        the message on the `AsyncInbox`.
         """
         asyncio.run_coroutine_threadsafe(
-            coro=AsyncController.send_controller_message(inbox=self._asyncio_queue, message=message),
+            coro=AsyncController.send_controller_message(inbox=self._async_inbox, message=message),
             loop=self._asyncio_event_loop,
         )
 
@@ -193,8 +195,8 @@ def start_asyncio_event_loop(loop: asyncio.AbstractEventLoop) -> None:
     loop.run_forever()
 
 
-def run_event_loop(inbox: asyncio.Queue, loop: asyncio.AbstractEventLoop, signals: Signals) -> None:
-    """Runs the given `asyncio` loop on a separate thread, passing the `asyncio.Queue`
+def run_event_loop(inbox: AsyncInbox[ControllerMessage], loop: asyncio.AbstractEventLoop, signals: Signals) -> None:
+    """Runs the given `asyncio` loop on a separate thread, passing the `AsyncInbox`
     to the event loop for any other thread to send messages to the event loop. The main
     coroutine that is launched on the event loop is `async_controller_main`.
     """
@@ -207,8 +209,8 @@ def run_event_loop(inbox: asyncio.Queue, loop: asyncio.AbstractEventLoop, signal
 if __name__ == "__main__":
     application = QApplication(sys.argv)
     window = MainWindow()
-    asyncio_queue = window._asyncio_queue
+    async_inbox = window._async_inbox
     asyncio_event_loop = window._asyncio_event_loop
 
-    run_event_loop(inbox=asyncio_queue, loop=asyncio_event_loop, signals=window.signals)
+    run_event_loop(inbox=async_inbox, loop=asyncio_event_loop, signals=window.signals)
     sys.exit(application.exec())
