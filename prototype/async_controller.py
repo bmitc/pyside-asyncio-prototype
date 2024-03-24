@@ -11,10 +11,11 @@ from PySide6.QtCore import Signal
 
 # Project dependencies
 from prototype.camera_client import CameraClient
+from prototype.signals import Signals
 
 
 class AsyncController:
-    def __init__(self, initial_state: IState, signals: list[Signal]) -> None:
+    def __init__(self, initial_state: IState, signals: Signals) -> None:
         """Initialize the controller to the given initial state and call the `
         on_entry` method for the state.
         """
@@ -68,7 +69,7 @@ class AsyncController:
 
     async def get_exposing_time(self) -> float:
         exposing_time = await self.__state.get_exposing_time()
-        self.__signals[4].emit(exposing_time)
+        self.__signals.set_exposing_time.emit(exposing_time)
         return exposing_time
 
 
@@ -84,11 +85,11 @@ class IState(ABC):
         self.__controller = controller
 
     @property
-    def signals(self) -> list[Signal]:
+    def signals(self) -> Signals:
         return self.__signals
 
     @signals.setter
-    def signals(self, signals: list[Signal]):
+    def signals(self, signals: Signals):
         self.__signals = signals
 
     @property
@@ -130,7 +131,7 @@ class IState(ABC):
 class Idle(IState):
     @override
     async def on_entry(self):
-        self.signals[0].emit()
+        self.signals.transition_to_idle.emit()
         print("Idling ...")
 
     async def start_camera_exposure(self) -> None:
@@ -149,7 +150,7 @@ class Idle(IState):
 class CameraExposing(IState):
     @override
     async def on_entry(self) -> None:
-        self.signals[1].emit()
+        self.signals.transition_to_camera_exposing.emit()
         print("Starting camera exposure ...")
         await self.camera_client.start_exposure()
 
@@ -174,7 +175,7 @@ class CameraExposing(IState):
 class SavingCameraImages(IState):
     @override
     async def on_entry(self) -> None:
-        self.signals[2].emit()
+        self.signals.transition_to_saving_camera_images.emit()
         print("Saving camera images ...")
 
         # Simulate saving images by sleeping 2 seconds
@@ -198,7 +199,7 @@ class SavingCameraImages(IState):
 class AbortingCameraExposure(IState):
     @override
     async def on_entry(self) -> None:
-        self.signals[3].emit()
+        self.signals.transition_to_aborting_camera_exposure.emit()
         print("Aborting camera exposure ...")
 
         # Simulate throwing away images and other tasks by sleeping 2 seconds
@@ -227,9 +228,12 @@ class ControllerMessage(Enum):
     GET_EXPOSING_TIME = auto()
 
 
-async def read_inbox(queue: asyncio.Queue, controller: AsyncController):
+async def read_inbox(inbox: asyncio.Queue, controller: AsyncController):
+    """Read the inbox, by blocking until a message arrives, and then delegate the message
+    to an `AyncController` method.
+    """
     while True:
-        message = await queue.get()
+        message = await inbox.get()
         match message:
             case ControllerMessage.START_CAMERA_EXPOSURE:
                 await controller.start_camera_exposure()
@@ -244,13 +248,19 @@ async def read_inbox(queue: asyncio.Queue, controller: AsyncController):
                 await controller.get_exposing_time()
 
 
-async def periodically_get_status(inbox: asyncio.Queue, controller: AsyncController):
+async def periodically_get_status(inbox: asyncio.Queue):
+    """A task that periodically, at 10Hz, sends a message to the controller to get various
+    statuses from the underlying tasks.
+    """
     while True:
         await inbox.put(ControllerMessage.GET_EXPOSING_TIME)
         await asyncio.sleep(0.1)
 
 
-async def async_controller_main(inbox: asyncio.Queue, signals: list[Signal]):
+async def async_controller_main(inbox: asyncio.Queue, signals: Signals):
+    """This is the main `asyncio` coroutine that launches concurrent tasks, running the
+    `AsyncController` state machine that centrally manages the various tasks.
+    """
     controller = AsyncController(initial_state=Idle(), signals=signals)
     await controller.initialize()
-    asyncio.gather(read_inbox(inbox, controller), periodically_get_status(inbox, controller))
+    asyncio.gather(read_inbox(inbox, controller), periodically_get_status(inbox))

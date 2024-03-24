@@ -6,8 +6,8 @@ class AsyncTCPClientMixin:
     def __init__(self, ip_address: str, port: int) -> None:
         self.__ip_address = ip_address
         self.__port = port
-        self.__reader: asyncio.StreamReader | None = None
-        self.__writer: asyncio.StreamWriter | None = None
+        self.__reader: asyncio.StreamReader
+        self.__writer: asyncio.StreamWriter
 
     async def _write(self, message: str) -> None:
         self.__writer.write(f"{message}\n".encode())

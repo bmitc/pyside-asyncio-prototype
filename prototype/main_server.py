@@ -4,9 +4,7 @@ import functools
 import websockets
 
 
-async def receive_websocket_message(
-    websocket, send_queue: asyncio.Queue, receive_queue: asyncio.Queue
-):
+async def receive_websocket_message(websocket, send_queue: asyncio.Queue, receive_queue: asyncio.Queue):
     # This also should handle application state. For example,
     # a message may transition a state machine to a different
     # state which would then potentially trigger new messages
@@ -20,9 +18,7 @@ async def receive_websocket_message(
 
 async def websocket_server(send_queue: asyncio.Queue, receive_queue: asyncio.Queue):
     # I don't know if this queue passing as argument works
-    bound_handler = functools.partial(
-        receive_websocket_message, send_queue=send_queue, receive_queue=receive_queue
-    )
+    bound_handler = functools.partial(receive_websocket_message, send_queue=send_queue, receive_queue=receive_queue)
     while True:
         try:
             async with serve(bound_handler, "localhost", 8765):
@@ -44,7 +40,7 @@ async def tcp_client(send_queue: asyncio.Queue, receive_queue: asyncio.Queue):
                 await writer.drain()
 
                 data = await reader.readline()
-                print(f"The TCP client received a response from the server: {data}")
+                print(f"The TCP client received a response from the server: {data.decode()}")
                 receive_queue.put_nowait(data)
             except ConnectionResetError:
                 # Re-open the connection

@@ -6,7 +6,7 @@ from functools import partial
 
 class CameraServer:
     def __init__(self) -> None:
-        self.__exposure_start_time: float | None = None
+        self.__exposure_start_time: float
         self.__exposing: bool = False
         self.__idle: bool = True
 
@@ -18,7 +18,6 @@ class CameraServer:
     def stop_exposure(self) -> None:
         self.__exposing = False
         self.__idle = True
-        self.__exposure_start_time = None
 
     @property
     def get_exposing_time(self) -> float:
@@ -52,7 +51,7 @@ async def handle_echo(reader: asyncio.StreamReader, writer: asyncio.StreamWriter
                 camera_server.stop_exposure()
                 response = "ok"
             case "get_exposing_time":
-                response = camera_server.get_exposing_time
+                response = str(camera_server.get_exposing_time)
             case "get_state":
                 response = camera_server.get_state
             case _:

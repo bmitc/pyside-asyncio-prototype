@@ -21,8 +21,9 @@ from PySide6.QtWidgets import (
 )
 
 # Project dependencies
-from async_controller import AsyncController, ControllerMessage, async_controller_main
-from led_indicator import LedIndicator
+from prototype.async_controller import AsyncController, ControllerMessage, async_controller_main
+from prototype.led_indicator import LedIndicator
+from prototype.signals import Signals
 
 
 class MainWindow(QWidget):
@@ -41,7 +42,7 @@ class MainWindow(QWidget):
         # but they will be passed into a new thread that will actually run the event loop.
         # Under no circumstances should the `asyncio.Queue` be used outside of that event loop. It
         # is only okay to construct it outside of the event loop.
-        self._asyncio_queue = asyncio.Queue()
+        self._asyncio_queue: asyncio.Queue = asyncio.Queue()
         self._asyncio_event_loop = asyncio.new_event_loop()
 
         # Create the state machine and the various states
@@ -62,13 +63,13 @@ class MainWindow(QWidget):
 
         # This is sloppy, but it can be easily replaced by a `NamedTuple` to prevent users from
         # having to index the list properly. This is just part of a quick implementation test.
-        self.signals = [
+        self.signals = Signals(
             self.transition_to_idle,
             self.transition_to_camera_exposing,
             self.transition_to_saving_camera_images,
             self.transition_to_aborting_camera_exposure,
             self.set_exposing_time,
-        ]
+        )
 
         self.initialize()
 
@@ -115,14 +116,12 @@ class MainWindow(QWidget):
 
         # Get the states and assign them to variables without the `self.` to make them more
         # concise to refer to
-
         state_idle = self.state_idle
         state_camera_exposing = self.state_camera_exposing
         state_saving_camera_images = self.state_saving_camera_images
         state_aborting_camera_exposure = self.state_aborting_camera_exposure
 
         # For every state, add a transition for every signal to the state that the signal describes
-
         for state in self.states:
             state.addTransition(self.transition_to_idle, state_idle)
             state.addTransition(self.transition_to_camera_exposing, state_camera_exposing)
@@ -194,7 +193,7 @@ def start_asyncio_event_loop(loop: asyncio.AbstractEventLoop) -> None:
     loop.run_forever()
 
 
-def run_event_loop(inbox: asyncio.Queue, loop: asyncio.AbstractEventLoop, signals: list[Signal]) -> None:
+def run_event_loop(inbox: asyncio.Queue, loop: asyncio.AbstractEventLoop, signals: Signals) -> None:
     """Runs the given `asyncio` loop on a separate thread, passing the `asyncio.Queue`
     to the event loop for any other thread to send messages to the event loop. The main
     coroutine that is launched on the event loop is `async_controller_main`.
