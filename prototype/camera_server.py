@@ -62,9 +62,12 @@ async def handle_echo(reader: asyncio.StreamReader, writer: asyncio.StreamWriter
         writer.write(f"{response}\n".encode())
         await writer.drain()
 
-    print("Close the connection")
-    writer.close()
-    await writer.wait_closed()
+    try:
+        print("Close the connection")
+        writer.close()
+        await writer.wait_closed()
+    except:
+        pass
 
 
 async def main():

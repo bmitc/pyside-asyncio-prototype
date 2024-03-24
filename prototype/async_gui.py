@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 # Project dependencies
-from async_controller import AsyncController, ControllerMessage, send_controller_message, Idle
+from async_controller import AsyncController, ControllerMessage, async_controller_main
 from led_indicator import LedIndicator
 
 
@@ -105,6 +105,7 @@ class MainWindow(QWidget):
         label_for_led_indicator = QLabel("Camera exposing?")
         led_indicator_camera_exposing = LedIndicator()
         lcd_indicator_exposing_time = QLCDNumber()
+        lcd_indicator_exposing_time.setSegmentStyle(QLCDNumber.SegmentStyle.Flat)
         self.set_exposing_time.connect(lambda number: lcd_indicator_exposing_time.display(f"{number:.1f}"))
 
         right_column_layout.addWidget(label_state)
@@ -131,6 +132,7 @@ class MainWindow(QWidget):
         # Configure what happens when the states are entered and set the appropriate property values
         # on various GUI elements
 
+        # "idle" state entered
         state_idle.assignProperty(label_state, "text", "State: Idle")
         state_idle.assignProperty(led_indicator_camera_exposing, "checked", False)
         state_idle.assignProperty(button_start_exposure, "enabled", True)
@@ -139,6 +141,7 @@ class MainWindow(QWidget):
         state_idle.assignProperty(lcd_indicator_exposing_time, "enabled", False)
         state_idle.assignProperty(lcd_indicator_exposing_time, "value", 0.0)
 
+        # "camera_exposing" state entered
         state_camera_exposing.assignProperty(label_state, "text", "State: Camera exposing")
         state_camera_exposing.assignProperty(led_indicator_camera_exposing, "checked", True)
         state_camera_exposing.assignProperty(button_start_exposure, "enabled", False)
@@ -146,6 +149,7 @@ class MainWindow(QWidget):
         state_camera_exposing.assignProperty(button_abort_exposure, "enabled", True)
         state_idle.assignProperty(lcd_indicator_exposing_time, "enabled", True)
 
+        # "saving_camera_images" state entered
         state_saving_camera_images.assignProperty(label_state, "text", "State: Saving camera images")
         state_saving_camera_images.assignProperty(led_indicator_camera_exposing, "checked", False)
         state_saving_camera_images.assignProperty(button_start_exposure, "enabled", False)
@@ -154,6 +158,7 @@ class MainWindow(QWidget):
         state_idle.assignProperty(lcd_indicator_exposing_time, "enabled", False)
         state_idle.assignProperty(lcd_indicator_exposing_time, "value", 0.0)
 
+        # "aborting camera exposure" state entered
         state_aborting_camera_exposure.assignProperty(label_state, "text", "State: Aborting camera exposure")
         state_aborting_camera_exposure.assignProperty(led_indicator_camera_exposing, "checked", False)
         state_aborting_camera_exposure.assignProperty(button_start_exposure, "enabled", False)
@@ -178,50 +183,26 @@ class MainWindow(QWidget):
         the message on the `asyncio.Queue`.
         """
         asyncio.run_coroutine_threadsafe(
-            coro=send_controller_message(inbox=self._asyncio_queue, message=message),
+            coro=AsyncController.send_controller_message(inbox=self._asyncio_queue, message=message),
             loop=self._asyncio_event_loop,
         )
 
 
-async def read_inbox(queue: asyncio.Queue, controller: AsyncController):
-    while True:
-        message = await queue.get()
-        match message:
-            case ControllerMessage.START_CAMERA_EXPOSURE:
-                await controller.start_camera_exposure()
-
-            case ControllerMessage.STOP_CAMERA_EXPOSURE:
-                await controller.stop_camera_exposure()
-
-            case ControllerMessage.ABORT_CAMERA_EXPOSURE:
-                await controller.abort_camera_exposure()
-
-            case ControllerMessage.GET_EXPOSING_TIME:
-                await controller.get_exposing_time()
-
-
-async def periodically_get_status(inbox: asyncio.Queue, controller: AsyncController):
-    while True:
-        await inbox.put(ControllerMessage.GET_EXPOSING_TIME)
-        await asyncio.sleep(0.1)
-
-
-async def asyncio_main(inbox: asyncio.Queue, signals: list[Signal]):
-    controller = AsyncController(initial_state=Idle(), signals=signals)
-    await controller.initialize()
-    asyncio.gather(read_inbox(inbox, controller), periodically_get_status(inbox, controller))
-
-
 def start_asyncio_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """Starts the given `asyncio` loop on whatever the current thread is"""
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
 
 def run_event_loop(inbox: asyncio.Queue, loop: asyncio.AbstractEventLoop, signals: list[Signal]) -> None:
+    """Runs the given `asyncio` loop on a separate thread, passing the `asyncio.Queue`
+    to the event loop for any other thread to send messages to the event loop. The main
+    coroutine that is launched on the event loop is `async_controller_main`.
+    """
     thread = Thread(target=start_asyncio_event_loop, args=(loop,), daemon=True)
     thread.start()
 
-    asyncio.run_coroutine_threadsafe(asyncio_main(inbox, signals), loop=loop)
+    asyncio.run_coroutine_threadsafe(async_controller_main(inbox, signals), loop=loop)
 
 
 if __name__ == "__main__":

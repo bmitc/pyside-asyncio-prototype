@@ -3,7 +3,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
-from enum import Enum, auto
+from enum import Enum, auto, verify, UNIQUE
 from typing import override
 
 # Package dependencies
@@ -49,6 +49,10 @@ class AsyncController:
         """Get the current state"""
         return self.__state
 
+    @staticmethod
+    async def send_controller_message(inbox: asyncio.Queue, message: ControllerMessage):
+        inbox.put_nowait(message)
+
     # Messages that the controller can be "sent" by calling methods on it.
     # The messages are then deferred down to the specific state that the
     # controller is in.
@@ -65,7 +69,6 @@ class AsyncController:
     async def get_exposing_time(self) -> float:
         exposing_time = await self.__state.get_exposing_time()
         self.__signals[4].emit(exposing_time)
-        print(f"Exposing time: {exposing_time}")
         return exposing_time
 
 
@@ -197,7 +200,6 @@ class AbortingCameraExposure(IState):
     async def on_entry(self) -> None:
         self.signals[3].emit()
         print("Aborting camera exposure ...")
-        await self.camera_client.stop_exposure()
 
         # Simulate throwing away images and other tasks by sleeping 2 seconds
         await asyncio.sleep(2)
@@ -217,6 +219,7 @@ class AbortingCameraExposure(IState):
         return 0.0
 
 
+@verify(UNIQUE)
 class ControllerMessage(Enum):
     START_CAMERA_EXPOSURE = auto()
     STOP_CAMERA_EXPOSURE = auto()
@@ -224,5 +227,30 @@ class ControllerMessage(Enum):
     GET_EXPOSING_TIME = auto()
 
 
-async def send_controller_message(inbox: asyncio.Queue, message: ControllerMessage):
-    inbox.put_nowait(message)
+async def read_inbox(queue: asyncio.Queue, controller: AsyncController):
+    while True:
+        message = await queue.get()
+        match message:
+            case ControllerMessage.START_CAMERA_EXPOSURE:
+                await controller.start_camera_exposure()
+
+            case ControllerMessage.STOP_CAMERA_EXPOSURE:
+                await controller.stop_camera_exposure()
+
+            case ControllerMessage.ABORT_CAMERA_EXPOSURE:
+                await controller.abort_camera_exposure()
+
+            case ControllerMessage.GET_EXPOSING_TIME:
+                await controller.get_exposing_time()
+
+
+async def periodically_get_status(inbox: asyncio.Queue, controller: AsyncController):
+    while True:
+        await inbox.put(ControllerMessage.GET_EXPOSING_TIME)
+        await asyncio.sleep(0.1)
+
+
+async def async_controller_main(inbox: asyncio.Queue, signals: list[Signal]):
+    controller = AsyncController(initial_state=Idle(), signals=signals)
+    await controller.initialize()
+    asyncio.gather(read_inbox(inbox, controller), periodically_get_status(inbox, controller))

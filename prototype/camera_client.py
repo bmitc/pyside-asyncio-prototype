@@ -1,49 +1,31 @@
 # Core dependencies
 import asyncio
 
+# Project dependencies
+from prototype.async_client_mixins import AsyncTCPClientMixin
 
-class CameraClient:
+
+class CameraClient(AsyncTCPClientMixin):
     def __init__(self, ip_address: str, port: int) -> None:
-        self.__ip_address = ip_address
-        self.__port = port
-        self.__reader: asyncio.StreamReader | None = None
-        self.__writer: asyncio.StreamWriter | None = None
-
-    async def __write(self, message: str) -> None:
-        self.__writer.write(f"{message}\n".encode())
-        await self.__writer.drain()
-
-    async def __read(self) -> str:
-        response_data: bytes = await self.__reader.readline()
-        response: str = response_data.decode().strip()
-        return response
-
-    async def initialize(self) -> None:
-        reader, writer = await asyncio.open_connection(self.__ip_address, self.__port)
-        self.__reader = reader
-        self.__writer = writer
+        super().__init__(ip_address, port)
 
     async def start_exposure(self) -> None:
-        await self.__write("start_exposure")
-        await self.__read()
+        await self._write("start_exposure")
+        await self._read()
 
     async def stop_exposure(self) -> None:
-        await self.__write("stop_exposure")
-        await self.__read()
+        await self._write("stop_exposure")
+        await self._read()
 
     async def get_state(self) -> str:
-        await self.__write("get_state")
-        response = await self.__read()
+        await self._write("get_state")
+        response = await self._read()
         return response
 
     async def get_exposing_time(self) -> float:
-        await self.__write("get_exposing_time")
-        response = await self.__read()
+        await self._write("get_exposing_time")
+        response = await self._read()
         return float(response)
-
-    async def close(self) -> None:
-        self.__writer.close()
-        await self.__writer.wait_closed()
 
 
 async def main():
