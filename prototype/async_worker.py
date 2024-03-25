@@ -17,6 +17,10 @@ class AsyncWorker(Generic[MessageType], ABC):
         self.__is_shutdown = False
 
     @property
+    def inbox(self) -> AsyncInbox[MessageType]:
+        return self.__inbox
+
+    @property
     def is_initialized(self) -> bool:
         return self.__is_initialized
 

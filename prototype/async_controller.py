@@ -11,6 +11,7 @@ from enum import Enum, auto, verify, UNIQUE
 from typing import override, final
 
 # Project dependencies
+from prototype.async_camera_worker import AsyncCameraWorker
 from prototype.async_inbox import AsyncInbox
 from prototype.camera_client import CameraClient
 from prototype.signals import Signals
@@ -31,18 +32,18 @@ class AsyncController:
         """
         self.__state = initial_state
         self.__signals = signals
-        self.__camera_client = CameraClient("127.0.0.1", 8888)
+        self.__camera_worker = AsyncCameraWorker("127.0.0.1", 8888)
 
         # Set initial state properties
         self.__state.controller = self
         self.__state.signals = signals
-        self.__state.camera_client = self.__camera_client
+        self.__state.camera_client = self.__camera_worker
 
     async def initialize(self) -> None:
         """Initialize the controller to the initial state and call the `on_entry`
         method for the state.
         """
-        await self.__camera_client.initialize()
+        await self.__camera_worker.
         await self.__state.on_entry()
 
     async def _transition_to(self, new_state: IState) -> None:
@@ -55,7 +56,7 @@ class AsyncController:
         self.__state = new_state
         self.__state.controller = self
         self.__state.signals = self.__signals
-        self.__state.camera_client = self.__camera_client
+        self.__state.camera_client = self.__camera_worker
         await self.__state.on_entry()
 
     @property
@@ -107,11 +108,11 @@ class IState(ABC):
 
     @property
     def camera_client(self) -> CameraClient:
-        return self.__camera_client
+        return self.__camera_worker
 
     @camera_client.setter
     def camera_client(self, camera_client: CameraClient):
-        self.__camera_client = camera_client
+        self.__camera_worker = camera_client
 
     async def on_entry(self) -> None:
         """Can be overridden by a state to perform an action when the state is
