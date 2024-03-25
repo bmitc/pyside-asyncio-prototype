@@ -1,6 +1,6 @@
 # Core dependencies
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Any
+from typing import Generic, TypeVar, Any, final
 
 # Project dependencies
 from prototype.async_inbox import AsyncInbox
@@ -33,19 +33,23 @@ class AsyncWorker(Generic[MessageType], ABC):
     @abstractmethod
     async def _receive_message(self, message: MessageType) -> None: ...
 
+    @final
     async def run(self) -> None:
-        await self._initialize()
-        self.__is_initialized = True
+        try:
+            await self._initialize()
+            self.__is_initialized = True
 
-        while self.__keep_running:
-            message: MessageType = await self.__inbox.read()
-            await self._receive_message(message)
+            while self.__keep_running:
+                message: MessageType = await self.__inbox.read()
+                await self._receive_message(message)
+        finally:
+            await self._shutdown()
+            self.__is_shutdown = True
 
-        await self._shutdown()
-        self.__is_shutdown = True
-
+    @final
     def schedule_shutdown(self) -> None:
         self.__keep_running = False
 
+    @final
     def send(self, message: MessageType) -> None:
         self.__inbox.send(message)

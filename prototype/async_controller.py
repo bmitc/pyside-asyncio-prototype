@@ -8,7 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from enum import Enum, auto, verify, UNIQUE
-from typing import override
+from typing import override, final
 
 # Project dependencies
 from prototype.async_inbox import AsyncInbox
@@ -16,6 +16,7 @@ from prototype.camera_client import CameraClient
 from prototype.signals import Signals
 
 
+@final
 class AsyncController:
     """A class implementing a controller intended to run as a concurrent task in
     an `asyncio` event loop. The controller implements a state machine via the standard
@@ -146,15 +147,19 @@ class Idle(IState):
         self.signals.transition_to_idle.emit()
         print("Idling ...")
 
+    @override
     async def start_camera_exposure(self) -> None:
         await self.controller._transition_to(CameraExposing())
 
+    @override
     async def stop_camera_exposure(self) -> None:
         pass
 
+    @override
     async def abort_camera_exposure(self) -> None:
         pass
 
+    @override
     async def get_exposing_time(self) -> float:
         return 0.0
 
@@ -171,15 +176,19 @@ class CameraExposing(IState):
         print("Stopping camera exposure ...")
         await self.camera_client.stop_exposure()
 
+    @override
     async def start_camera_exposure(self) -> None:
         pass
 
+    @override
     async def stop_camera_exposure(self) -> None:
         await self.controller._transition_to(SavingCameraImages())
 
+    @override
     async def abort_camera_exposure(self) -> None:
         await self.controller._transition_to(AbortingCameraExposure())
 
+    @override
     async def get_exposing_time(self) -> float:
         return await self.camera_client.get_exposing_time()
 
@@ -195,15 +204,19 @@ class SavingCameraImages(IState):
 
         await self.controller._transition_to(Idle())
 
+    @override
     async def start_camera_exposure(self) -> None:
         pass
 
+    @override
     async def stop_camera_exposure(self) -> None:
         pass
 
+    @override
     async def abort_camera_exposure(self) -> None:
         pass
 
+    @override
     async def get_exposing_time(self) -> float:
         return 0.0
 
@@ -219,15 +232,19 @@ class AbortingCameraExposure(IState):
 
         await self.controller._transition_to(Idle())
 
+    @override
     async def start_camera_exposure(self) -> None:
         pass
 
+    @override
     async def stop_camera_exposure(self) -> None:
         pass
 
+    @override
     async def abort_camera_exposure(self) -> None:
         pass
 
+    @override
     async def get_exposing_time(self) -> float:
         return 0.0
 
