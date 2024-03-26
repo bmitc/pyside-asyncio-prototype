@@ -5,6 +5,7 @@ to and responds to state transitions
 
 # Core dependencies
 import asyncio
+import logging
 import sys
 from threading import Thread
 
@@ -23,7 +24,7 @@ from PySide6.QtWidgets import (
 
 # Project dependencies
 from prototype.async_controller import AsyncController, ControllerMessage, async_controller_main
-from prototype.async_inbox import AsyncInbox
+from prototype.async_messaging import AsyncInbox
 from prototype.led_indicator import LedIndicator
 from prototype.signals import Signals
 
@@ -44,7 +45,7 @@ class MainWindow(QWidget):
         # but they will be passed into a new thread that will actually run the event loop.
         # Under no circumstances should the `AsyncInbox` be used outside of that event loop. It
         # is only okay to construct it outside of the event loop.
-        self._async_inbox: AsyncInbox[ControllerMessage] = AsyncInbox[ControllerMessage]()
+        self._async_inbox: AsyncInbox[ControllerMessage] = AsyncInbox[ControllerMessage](name="AsyncController")
         self._asyncio_event_loop = asyncio.new_event_loop()
 
         # Create the state machine and the various states
@@ -192,6 +193,7 @@ class MainWindow(QWidget):
 def start_asyncio_event_loop(loop: asyncio.AbstractEventLoop) -> None:
     """Starts the given `asyncio` loop on whatever the current thread is"""
     asyncio.set_event_loop(loop)
+    loop.set_debug(enabled=True)
     loop.run_forever()
 
 
@@ -206,11 +208,19 @@ def run_event_loop(inbox: AsyncInbox[ControllerMessage], loop: asyncio.AbstractE
     asyncio.run_coroutine_threadsafe(async_controller_main(inbox, signals), loop=loop)
 
 
+def run_application(application: QApplication):
+    application.exec()
+    logging.info("Application has exited")
+
+
 if __name__ == "__main__":
+    logging.basicConfig(handlers=[logging.StreamHandler()], level=logging.DEBUG)
+    logging.info("Started application")
+
     application = QApplication(sys.argv)
     window = MainWindow()
     async_inbox = window._async_inbox
     asyncio_event_loop = window._asyncio_event_loop
 
     run_event_loop(inbox=async_inbox, loop=asyncio_event_loop, signals=window.signals)
-    sys.exit(application.exec())
+    sys.exit(run_application(application))

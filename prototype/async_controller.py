@@ -11,9 +11,8 @@ from enum import Enum, auto, verify, UNIQUE
 from typing import override, final
 
 # Project dependencies
-from prototype.async_camera_worker import AsyncCameraWorker
-from prototype.async_inbox import AsyncInbox
-from prototype.camera_client import CameraClient
+from prototype.async_camera_worker import AsyncCameraWorker, CameraMessage
+from prototype.async_messaging import AsyncInbox
 from prototype.signals import Signals
 
 
@@ -39,11 +38,14 @@ class AsyncController:
         self.__state.signals = signals
         self.__state.camera_client = self.__camera_worker
 
+        # Declare instance variables
+        self.__camera_worker_task: asyncio.Task
+
     async def initialize(self) -> None:
         """Initialize the controller to the initial state and call the `on_entry`
         method for the state.
         """
-        await self.__camera_worker.
+        self.__camera_worker_task = asyncio.create_task(self.__camera_worker.run(), name="Camera worker task")
         await self.__state.on_entry()
 
     async def _transition_to(self, new_state: IState) -> None:
@@ -107,11 +109,11 @@ class IState(ABC):
         self.__signals = signals
 
     @property
-    def camera_client(self) -> CameraClient:
+    def camera_client(self) -> AsyncCameraWorker:
         return self.__camera_worker
 
     @camera_client.setter
-    def camera_client(self, camera_client: CameraClient):
+    def camera_client(self, camera_client: AsyncCameraWorker):
         self.__camera_worker = camera_client
 
     async def on_entry(self) -> None:
@@ -170,12 +172,12 @@ class CameraExposing(IState):
     async def on_entry(self) -> None:
         self.signals.transition_to_camera_exposing.emit()
         print("Starting camera exposure ...")
-        await self.camera_client.start_exposure()
+        self.camera_client.send(CameraMessage.START_EXPOSURE)
 
     @override
     async def on_exit(self) -> None:
         print("Stopping camera exposure ...")
-        await self.camera_client.stop_exposure()
+        self.camera_client.send(CameraMessage.STOP_EXPOSURE)
 
     @override
     async def start_camera_exposure(self) -> None:
@@ -191,7 +193,8 @@ class CameraExposing(IState):
 
     @override
     async def get_exposing_time(self) -> float:
-        return await self.camera_client.get_exposing_time()
+        # return await self.camera_client.get_exposing_time()
+        return 0.0
 
 
 class SavingCameraImages(IState):
@@ -283,7 +286,7 @@ async def periodically_get_status(inbox: AsyncInbox[ControllerMessage]):
     statuses from the underlying tasks.
     """
     while True:
-        inbox.send(ControllerMessage.GET_EXPOSING_TIME)
+        # inbox.send(ControllerMessage.GET_EXPOSING_TIME)
         await asyncio.sleep(0.1)
 
 
