@@ -4,7 +4,7 @@ from typing import final, override
 
 # Project dependencies
 from prototype.async_core.messaging import ReplyChannel
-from prototype.async_core.async_worker import AsyncWorker
+from prototype.async_core.worker import AsyncWorker
 from prototype.async_clients.camera_client import CameraClient
 
 
