@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, Any, final, override
 
 # Project dependencies
-from prototype.async_messaging import AsyncInbox, ReplyChannel
-from prototype.async_mixins import AsyncLoggingMixin
+from prototype.async_core.messaging import AsyncInbox, ReplyChannel
+from prototype.async_core.mixins import AsyncLoggingMixin
 
 MessageType = TypeVar("MessageType")
 ReplyType = TypeVar("ReplyType")

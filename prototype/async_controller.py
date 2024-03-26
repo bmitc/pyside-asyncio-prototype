@@ -11,8 +11,8 @@ from enum import Enum, auto, verify, UNIQUE
 from typing import override, final
 
 # Project dependencies
-from prototype.async_camera_worker import AsyncCameraWorker, CameraMessage
-from prototype.async_messaging import AsyncInbox
+from prototype.async_workers.camera_worker import AsyncCameraWorker, CameraMessage
+from prototype.async_core.messaging import AsyncInbox
 from prototype.signals import Signals
 
 

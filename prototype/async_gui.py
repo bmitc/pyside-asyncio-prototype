@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 
 # Project dependencies
 from prototype.async_controller import AsyncController, ControllerMessage, async_controller_main
-from prototype.async_messaging import AsyncInbox
+from prototype.async_core.messaging import AsyncInbox
 from prototype.led_indicator import LedIndicator
 from prototype.signals import Signals
 

@@ -3,9 +3,9 @@ from enum import Enum, auto
 from typing import final, override
 
 # Project dependencies
-from prototype.async_messaging import ReplyChannel
-from prototype.async_worker import AsyncWorker
-from prototype.camera_client import CameraClient
+from prototype.async_core.messaging import ReplyChannel
+from prototype.async_core.async_worker import AsyncWorker
+from prototype.async_clients.camera_client import CameraClient
 
 
 class CameraMessage(Enum):

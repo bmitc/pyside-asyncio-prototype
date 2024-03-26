@@ -2,7 +2,7 @@
 from typing import final
 
 # Project dependencies
-from prototype.async_client_mixins import AsyncTCPClientMixin
+from prototype.async_core.async_client_mixins import AsyncTCPClientMixin
 
 
 @final
