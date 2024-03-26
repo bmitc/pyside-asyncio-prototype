@@ -26,7 +26,7 @@ class AsyncInbox(Generic[MessageType], AsyncLoggingMixin):
         self.__name = name
         self.__queue: asyncio.Queue = asyncio.Queue(maxsize)
 
-    @override
+    @override  # for AsyncLoggingMixin
     def _async_log_name(self) -> str:
         if self.__name:
             return f"<AsyncInbox: {self.__name}>"

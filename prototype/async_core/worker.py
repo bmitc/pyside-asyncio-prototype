@@ -1,6 +1,6 @@
 # Core dependencies
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Any, final, override
+from typing import Generic, TypeVar, final, override
 
 # Project dependencies
 from prototype.async_core.messaging import AsyncInbox, ReplyChannel
@@ -11,6 +11,13 @@ ReplyType = TypeVar("ReplyType")
 
 
 class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
+    """A generic worker that manages an inbox of the specific generic type. Other coroutines,
+    tasks, workers, etc. in an event loop can send messages to this worker via the `send` method
+    or directly via the `inbox` property. The worker will then receive and process the message.
+    The specific initializing, shutdown, and processing of messages is up to a concrete
+    implementation of this class.
+    """
+
     def __init__(self, name: str = ""):
         self.__name = name
         self.__inbox = AsyncInbox[MessageType](name=name)
@@ -18,7 +25,7 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
         self.__is_initialized = False
         self.__is_shutdown = False
 
-    @override
+    @override  # for AsyncLoggingMixin
     def _async_log_name(self) -> str:
         if self.__name:
             return f"<AsyncWorker: {self.__name}"
@@ -27,30 +34,53 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
 
     @property
     def inbox(self) -> AsyncInbox[MessageType]:
+        """The worker's inbox"""
         return self.__inbox
 
     @property
     def is_initialized(self) -> bool:
+        """Indicates whether the worker has been initialized or not"""
         return self.__is_initialized
 
     @property
     def is_shutdown(self) -> bool:
+        """Indicates whether the worker has been shutdown or not"""
         return self.__is_shutdown
 
     @abstractmethod
-    async def _initialize(self) -> None: ...
+    async def _initialize(self) -> None:
+        """Initializes any of the underlying worker's clients or other dependencies.
+        A concrete implementation must override this method. Any initialization of the worker
+        that performs any awaiting of coroutines or any non-trivial work should go in this
+        method and not `__init__`. If there is no initialization to be performed, then simply
+        place `pass` in the method implementation.
+        """
+        ...
 
     @abstractmethod
-    async def _shutdown(self) -> None: ...
+    async def _shutdown(self) -> None:
+        """Shuts down any of the underlying worker's clients or other dependencies.
+        A concrete implementation must override this method. If there is no initialization
+        to be performed, then simply place `pass` in the method implementation.
+        """
+        ...
 
     @abstractmethod
-    async def _receive_message(self, message: MessageType) -> None: ...
+    async def _receive_message(self, message: MessageType) -> None:
+        """When a message is sent to the worker's internal inbox, this method is called with the
+        received message. Concrete implementations should override this method, as it is the only
+        way for a worker to take action.
+        """
+        ...
 
     @abstractmethod
     async def _receive_synchronous_message[ReplyType](self, message: MessageType, reply_channel: ReplyChannel[ReplyType]) -> None: ...  # type: ignore
 
     @final
     async def run(self) -> None:
+        """Runs a loop that listens for a message on every iteration. When the message arrives, the message
+        is processed via the override of `self._receive_message`.
+        """
         try:
             await self._initialize()
             self.__is_initialized = True
@@ -76,8 +106,14 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
 
     @final
     def schedule_shutdown(self) -> None:
+        """Schedules the worker to shutdown, which means that it's internal `run` loop
+        will stop on the next opportunity, and then the `_shutdown` method will be called.
+        """
         self.__keep_running = False
 
     @final
     def send(self, message: MessageType) -> None:
+        """A convenience method to send a method to a worker's inbox. The worker's inbox
+        can also be retrieved using the `inbox` property.
+        """
         self.__inbox.send(message)
