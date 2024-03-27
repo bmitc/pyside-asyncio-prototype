@@ -1,13 +1,13 @@
 # Core dependencies
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, final, override
+from typing import Generic, TypeVar, Any, final, override
 
 # Project dependencies
 from prototype.async_core.messaging import AsyncInbox, ReplyChannel
 from prototype.async_core.mixins import AsyncLoggingMixin
 
+
 MessageType = TypeVar("MessageType")
-ReplyType = TypeVar("ReplyType")
 
 
 class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
@@ -74,7 +74,13 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
         ...
 
     @abstractmethod
-    async def _receive_synchronous_message[ReplyType](self, message: MessageType, reply_channel: ReplyChannel[ReplyType]) -> None: ...  # type: ignore
+    async def _receive_synchronous_message(self, message: MessageType, reply_channel: ReplyChannel[Any]) -> None:
+        """When a synchronous message is sent to the worker's internal inbox, this method is called
+        with the received message. Concrete implementations should override this method, as it is
+        the only way for a worker to take action. The override should use the given
+        `ReplyChannel`'s `reply` method to reply back to the sender with a response.
+        """
+        ...
 
     @final
     async def run(self) -> None:
@@ -89,17 +95,18 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
             while self.__keep_running:
                 self._async_log_debug(f"Waiting on message")
 
-                msg: MessageType | tuple[MessageType, ReplyChannel] = await self.__inbox.read()
+                msg = await self.__inbox.read()
 
                 self._async_log_debug(f'Received message "{msg}"')
 
                 match msg:
                     case (message, reply_channel):
-                        await self._receive_synchronous_message(message, reply_channel)
+                        await self._receive_synchronous_message(message, reply_channel)  # type: ignore
                     case message:
-                        await self._receive_message(message)
+                        await self._receive_message(message)  # type: ignore
 
         except Exception as exception:
+            self._async_log_debug(f"Exception: {exception}")
             await self._shutdown()
             self.__is_shutdown = True
             self._async_log_debug(f"Shutdown")
@@ -113,7 +120,15 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
 
     @final
     def send(self, message: MessageType) -> None:
-        """A convenience method to send a method to a worker's inbox. The worker's inbox
+        """A convenience method to send a message to the worker's inbox. The worker's inbox
         can also be retrieved using the `inbox` property.
         """
         self.__inbox.send(message)
+
+    @final
+    async def send_synchronous(self, message: MessageType) -> Any:
+        """A convenience method to send a message immediately and synchronously to the worker's
+        inbox. This means that the caller is expecting a reply and will not continue until the
+        reply arrives. Currently, it is up to the sender to know what type to expect back.
+        """
+        return await self.__inbox.send_synchronous(message)

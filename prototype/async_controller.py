@@ -193,8 +193,10 @@ class CameraExposing(IState):
 
     @override
     async def get_exposing_time(self) -> float:
-        # return await self.camera_client.get_exposing_time()
-        return 0.0
+        # This should NOT be a synchronous message, but a synchronous message is
+        # used here to prove out this functionality.
+        exposing_time = await self.camera_client.send_synchronous(CameraMessage.GET_EXPOSING_TIME)
+        return float(exposing_time)
 
 
 class SavingCameraImages(IState):
@@ -286,7 +288,7 @@ async def periodically_get_status(inbox: AsyncInbox[ControllerMessage]):
     statuses from the underlying tasks.
     """
     while True:
-        # inbox.send(ControllerMessage.GET_EXPOSING_TIME)
+        inbox.send(ControllerMessage.GET_EXPOSING_TIME)
         await asyncio.sleep(0.1)
 
 

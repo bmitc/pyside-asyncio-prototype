@@ -4,13 +4,13 @@
 # The `__future__` import must be listed first. Otherwise, a `SyntaxError` is emitted.
 from __future__ import annotations
 import asyncio
-from typing import Generic, TypeVar, final, override
+from typing import Generic, TypeVar, Any, final, override
 
 # Project dependencies
 from prototype.async_core.mixins import AsyncLoggingMixin
 
+
 MessageType = TypeVar("MessageType")
-ReplyType = TypeVar("ReplyType")
 
 
 @final
@@ -38,11 +38,12 @@ class AsyncInbox(Generic[MessageType], AsyncLoggingMixin):
         self.__queue.put_nowait(message)
         self._async_log_debug(f"<Message: {message}> was sent to inbox")
 
-    async def send_synchronous[ReplyType](self, message: MessageType) -> ReplyType:  # type: ignore
+    async def send_synchronous(self, message: MessageType) -> Any:
         """Sends a message immediately and synchronously to the inbox. This means that
         the caller is expecting a reply and will not continue until the reply arrives.
+        Currently, it is up to the sender to know what type to expect back.
         """
-        reply_channel = ReplyChannel[ReplyType]()
+        reply_channel = ReplyChannel[Any]()
         self.__queue.put_nowait((message, reply_channel))
         return await reply_channel._read_reply()
 

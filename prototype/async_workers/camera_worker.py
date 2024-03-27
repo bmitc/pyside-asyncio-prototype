@@ -1,6 +1,6 @@
 # Core dependencies
 from enum import Enum, auto
-from typing import final, override
+from typing import Any, final, override
 
 # Project dependencies
 from prototype.async_core.messaging import ReplyChannel
@@ -13,6 +13,7 @@ class CameraMessage(Enum):
 
     START_EXPOSURE = auto()
     STOP_EXPOSURE = auto()
+    GET_EXPOSING_TIME = auto()
 
 
 @final
@@ -38,5 +39,7 @@ class AsyncCameraWorker(AsyncWorker[CameraMessage]):
                 await self.__camera_client.stop_exposure()
 
     @override
-    async def _receive_synchronous_message(self, message: CameraMessage, reply_channel: ReplyChannel) -> None:
-        pass
+    async def _receive_synchronous_message(self, message: CameraMessage, reply_channel: ReplyChannel[Any]) -> None:
+        match message:
+            case CameraMessage.GET_EXPOSING_TIME:
+                reply_channel.reply(await self.__camera_client.get_exposing_time())
