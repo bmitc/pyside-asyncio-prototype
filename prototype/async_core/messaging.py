@@ -67,7 +67,9 @@ class ReplyChannel(Generic[MessageType]):
     """
 
     def __init__(self) -> None:
-        """The `ReplyChannel` is simply a wrapper over the core `asyncio.Queue`"""
+        """The `ReplyChannel` is simply a wrapper over the core `asyncio.Queue`
+        with a maximum size set to 1
+        """
         # A maximum size of 1 is set because this is only used to put the result of a single
         # message on the queue to be immediately read.
         self.__queue: asyncio.Queue = asyncio.Queue(1)
