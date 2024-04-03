@@ -45,7 +45,9 @@ class MainWindow(QWidget):
         # but they will be passed into a new thread that will actually run the event loop.
         # Under no circumstances should the `AsyncInbox` be used outside of that event loop. It
         # is only okay to construct it outside of the event loop.
-        self._async_inbox: AsyncInbox[ControllerMessage] = AsyncInbox[ControllerMessage](name="AsyncController")
+        self._async_inbox: AsyncInbox[ControllerMessage] = AsyncInbox[ControllerMessage](
+            name="AsyncController"
+        )
         self._asyncio_event_loop = asyncio.new_event_loop()
 
         # Create the state machine and the various states
@@ -100,9 +102,15 @@ class MainWindow(QWidget):
         left_column_layout.addWidget(button_abort_exposure)
 
         # Add slots for sending messages to the controller when the buttons are pressed
-        button_start_exposure.pressed.connect(lambda: self.send_controller_message(ControllerMessage.START_CAMERA_EXPOSURE))
-        button_stop_exposure.pressed.connect(lambda: self.send_controller_message(ControllerMessage.STOP_CAMERA_EXPOSURE))
-        button_abort_exposure.pressed.connect(lambda: self.send_controller_message(ControllerMessage.ABORT_CAMERA_EXPOSURE))
+        button_start_exposure.pressed.connect(
+            lambda: self.send_controller_message(ControllerMessage.START_CAMERA_EXPOSURE)
+        )
+        button_stop_exposure.pressed.connect(
+            lambda: self.send_controller_message(ControllerMessage.STOP_CAMERA_EXPOSURE)
+        )
+        button_abort_exposure.pressed.connect(
+            lambda: self.send_controller_message(ControllerMessage.ABORT_CAMERA_EXPOSURE)
+        )
 
         # Create a label, LED indicator, and LCD number indicator and add them to the right vertical layout
         label_state = QLabel()
@@ -110,10 +118,14 @@ class MainWindow(QWidget):
         led_indicator_camera_exposing = LedIndicator()
         lcd_indicator_exposing_time = QLCDNumber()
         lcd_indicator_exposing_time.setSegmentStyle(QLCDNumber.SegmentStyle.Flat)
-        self.set_exposing_time.connect(lambda number: lcd_indicator_exposing_time.display(f"{number:.1f}"))
+        self.set_exposing_time.connect(
+            lambda number: lcd_indicator_exposing_time.display(f"{number:.1f}")
+        )
 
         right_column_layout.addWidget(label_state)
-        right_column_layout.addWidget(label_for_led_indicator, alignment=Qt.AlignmentFlag.AlignHCenter)
+        right_column_layout.addWidget(
+            label_for_led_indicator, alignment=Qt.AlignmentFlag.AlignHCenter
+        )
         right_column_layout.addWidget(led_indicator_camera_exposing)
         right_column_layout.addWidget(lcd_indicator_exposing_time)
 
@@ -129,7 +141,9 @@ class MainWindow(QWidget):
             state.addTransition(self.transition_to_idle, state_idle)
             state.addTransition(self.transition_to_camera_exposing, state_camera_exposing)
             state.addTransition(self.transition_to_saving_camera_images, state_saving_camera_images)
-            state.addTransition(self.transition_to_aborting_camera_exposure, state_aborting_camera_exposure)
+            state.addTransition(
+                self.transition_to_aborting_camera_exposure, state_aborting_camera_exposure
+            )
 
         # Configure what happens when the states are entered and set the appropriate property values
         # on various GUI elements
@@ -152,7 +166,9 @@ class MainWindow(QWidget):
         state_idle.assignProperty(lcd_indicator_exposing_time, "enabled", True)
 
         # "saving_camera_images" state entered
-        state_saving_camera_images.assignProperty(label_state, "text", "State: Saving camera images")
+        state_saving_camera_images.assignProperty(
+            label_state, "text", "State: Saving camera images"
+        )
         state_saving_camera_images.assignProperty(led_indicator_camera_exposing, "checked", False)
         state_saving_camera_images.assignProperty(button_start_exposure, "enabled", False)
         state_saving_camera_images.assignProperty(button_stop_exposure, "enabled", False)
@@ -161,8 +177,12 @@ class MainWindow(QWidget):
         state_idle.assignProperty(lcd_indicator_exposing_time, "value", 0.0)
 
         # "aborting camera exposure" state entered
-        state_aborting_camera_exposure.assignProperty(label_state, "text", "State: Aborting camera exposure")
-        state_aborting_camera_exposure.assignProperty(led_indicator_camera_exposing, "checked", False)
+        state_aborting_camera_exposure.assignProperty(
+            label_state, "text", "State: Aborting camera exposure"
+        )
+        state_aborting_camera_exposure.assignProperty(
+            led_indicator_camera_exposing, "checked", False
+        )
         state_aborting_camera_exposure.assignProperty(button_start_exposure, "enabled", False)
         state_aborting_camera_exposure.assignProperty(button_stop_exposure, "enabled", False)
         state_aborting_camera_exposure.assignProperty(button_abort_exposure, "enabled", False)
@@ -197,7 +217,9 @@ def start_asyncio_event_loop(loop: asyncio.AbstractEventLoop) -> None:
     loop.run_forever()
 
 
-def run_event_loop(inbox: AsyncInbox[ControllerMessage], loop: asyncio.AbstractEventLoop, signals: Signals) -> None:
+def run_event_loop(
+    inbox: AsyncInbox[ControllerMessage], loop: asyncio.AbstractEventLoop, signals: Signals
+) -> None:
     """Runs the given `asyncio` loop on a separate thread, passing the `AsyncInbox`
     to the event loop for any other thread to send messages to the event loop. The main
     coroutine that is launched on the event loop is `async_controller_main`.

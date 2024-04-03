@@ -33,7 +33,9 @@ class CameraServer:
             return "unknown"
 
 
-async def handle_echo(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, camera_server: CameraServer):
+async def handle_echo(
+    reader: asyncio.StreamReader, writer: asyncio.StreamWriter, camera_server: CameraServer
+):
     continue_listening = True
 
     while continue_listening:

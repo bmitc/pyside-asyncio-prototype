@@ -18,7 +18,7 @@ hypothesis = "^6.99.13"
 pytest-asyncio = "^0.23.6"
 
 [tool.black]
-line-length = 200
+line-length = 100
 
 [build-system]
 requires = ["poetry-core"]

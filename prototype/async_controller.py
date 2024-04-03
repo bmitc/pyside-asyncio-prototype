@@ -45,7 +45,9 @@ class AsyncController:
         """Initialize the controller to the initial state and call the `on_entry`
         method for the state.
         """
-        self.__camera_worker_task = asyncio.create_task(self.__camera_worker.run(), name="Camera worker task")
+        self.__camera_worker_task = asyncio.create_task(
+            self.__camera_worker.run(), name="Camera worker task"
+        )
         await self.__state.on_entry()
 
     async def _transition_to(self, new_state: IState) -> None:
@@ -67,7 +69,9 @@ class AsyncController:
         return self.__state
 
     @staticmethod
-    async def send_controller_message(inbox: AsyncInbox[ControllerMessage], message: ControllerMessage):
+    async def send_controller_message(
+        inbox: AsyncInbox[ControllerMessage], message: ControllerMessage
+    ):
         inbox.send(message)
 
     # Messages that the controller can be "sent" by calling methods on it.

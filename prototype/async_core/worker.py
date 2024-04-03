@@ -74,7 +74,9 @@ class AsyncWorker(Generic[MessageType], AsyncLoggingMixin, ABC):
         ...
 
     @abstractmethod
-    async def _receive_synchronous_message(self, message: MessageType, reply_channel: ReplyChannel[Any]) -> None:
+    async def _receive_synchronous_message(
+        self, message: MessageType, reply_channel: ReplyChannel[Any]
+    ) -> None:
         """When a synchronous message is sent to the worker's internal inbox, this method is called
         with the received message. Concrete implementations should override this method, as it is
         the only way for a worker to take action. The override should use the given

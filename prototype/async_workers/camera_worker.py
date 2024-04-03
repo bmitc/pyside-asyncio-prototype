@@ -39,7 +39,9 @@ class AsyncCameraWorker(AsyncWorker[CameraMessage]):
                 await self.__camera_client.stop_exposure()
 
     @override
-    async def _receive_synchronous_message(self, message: CameraMessage, reply_channel: ReplyChannel[Any]) -> None:
+    async def _receive_synchronous_message(
+        self, message: CameraMessage, reply_channel: ReplyChannel[Any]
+    ) -> None:
         match message:
             case CameraMessage.GET_EXPOSING_TIME:
                 reply_channel.reply(await self.__camera_client.get_exposing_time())
