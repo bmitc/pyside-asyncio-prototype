@@ -20,6 +20,9 @@ pytest-asyncio = "^0.23.6"
 [tool.black]
 line-length = 100
 
+[tool.pylint]
+disable = "unnecessary-pass, unnecessary-ellipsis, logging-fstring-interpolation, no-else-return"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

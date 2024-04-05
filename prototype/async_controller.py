@@ -120,6 +120,9 @@ class IState(ABC):
     def camera_client(self, camera_client: AsyncCameraWorker):
         self.__camera_worker = camera_client
 
+    async def _transition_to(self, new_state: IState) -> None:
+        await self.controller._transition_to(new_state)  # pylint: disable=protected-access
+
     async def on_entry(self) -> None:
         """Can be overridden by a state to perform an action when the state is
         being entered, i.e., transitions into. It is not required to be overridden.
@@ -156,7 +159,7 @@ class Idle(IState):
 
     @override
     async def start_camera_exposure(self) -> None:
-        await self.controller._transition_to(CameraExposing())
+        await self._transition_to(CameraExposing())
 
     @override
     async def stop_camera_exposure(self) -> None:
@@ -189,11 +192,11 @@ class CameraExposing(IState):
 
     @override
     async def stop_camera_exposure(self) -> None:
-        await self.controller._transition_to(SavingCameraImages())
+        await self._transition_to(SavingCameraImages())
 
     @override
     async def abort_camera_exposure(self) -> None:
-        await self.controller._transition_to(AbortingCameraExposure())
+        await self._transition_to(AbortingCameraExposure())
 
     @override
     async def get_exposing_time(self) -> float:
@@ -212,7 +215,7 @@ class SavingCameraImages(IState):
         # Simulate saving images by sleeping 2 seconds
         await asyncio.sleep(2)
 
-        await self.controller._transition_to(Idle())
+        await self._transition_to(Idle())
 
     @override
     async def start_camera_exposure(self) -> None:
@@ -240,7 +243,7 @@ class AbortingCameraExposure(IState):
         # Simulate throwing away images and other tasks by sleeping 2 seconds
         await asyncio.sleep(2)
 
-        await self.controller._transition_to(Idle())
+        await self._transition_to(Idle())
 
     @override
     async def start_camera_exposure(self) -> None:
